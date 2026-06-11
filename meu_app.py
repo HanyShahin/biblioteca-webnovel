@@ -19,7 +19,7 @@ if 'pag_input' not in st.session_state:
 
 @st.cache_data
 def carregar_dados():
-    # Lendo o ZIP para rodar online sem erro de limite do GitHub
+    # Lendo o ZIP para rodar online sem erro de limite
     df = pd.read_csv('webnovel_dados_finais.zip', sep=';', on_bad_lines='skip', 
                      dtype={'Book_ID': str}, compression='zip')
     df.fillna({
@@ -34,6 +34,16 @@ df = carregar_dados()
 # --- BARRA LATERAL ---
 st.sidebar.header("Filtros")
 busca_titulo = st.sidebar.text_input("Buscar Título:")
+
+# DE VOLTA: Filtro de Capítulos
+max_capitulos_banco = int(df['Capitulos'].max()) if not df.empty else 5000
+min_cap, max_cap = st.sidebar.slider(
+    "Quantidade de Capítulos", 
+    min_value=0, 
+    max_value=max_capitulos_banco, 
+    value=(0, 1000)
+)
+
 nota_minima = st.sidebar.slider("Nota Mínima", 0.0, 5.0, 4.0, 0.1)
 views_minimas = st.sidebar.number_input("Views Mínimas", min_value=0, value=10000, step=10000)
 
@@ -54,6 +64,8 @@ if busca_titulo:
     for palavra in busca_titulo.split():
         df_filtrado = df_filtrado[df_filtrado['Nome'].str.contains(palavra.strip(), case=False, na=False, regex=False)]
 
+# DE VOLTA: Aplicando a regra dos Capítulos
+df_filtrado = df_filtrado[(df_filtrado['Capitulos'] >= min_cap) & (df_filtrado['Capitulos'] <= max_cap)]
 df_filtrado = df_filtrado[(df_filtrado['Nota_Total'] >= nota_minima) & (df_filtrado['Views'] >= views_minimas)]
 
 if categorias_selecionadas:
@@ -83,11 +95,9 @@ st.title("📚 Webnovel DB")
 st.caption(f"Exibindo {len(df_filtrado)} resultados")
 
 if len(df_filtrado) > 0:
-    # No PC usamos 2 colunas de listas horizontais. No Celular vira 1 coluna.
     colunas_grade = st.columns(2)
     
     for i, (_, livro) in enumerate(df_exibicao.iterrows()):
-        # Distribui entre as colunas da esquerda e direita no PC
         col_alvo = colunas_grade[i % 2]
         
         id_livro = str(livro['Book_ID']).strip().replace('.0', '')
@@ -95,7 +105,6 @@ if len(df_filtrado) > 0:
         link_leitura = f"https://www.webnovel.com/book/{id_livro}"
         
         with col_alvo:
-            # HTML CUSTOMIZADO: Estilo Lista Horizontal (Mobile First)
             st.markdown(f'''
                 <div style="display: flex; background-color: #1e1e1e; border-radius: 10px; padding: 10px; margin-bottom: 12px; border: 1px solid #333; height: 160px; overflow: hidden;">
                     <div style="flex: 0 0 100px; height: 140px;">
@@ -115,7 +124,6 @@ if len(df_filtrado) > 0:
                 </div>
             ''', unsafe_allow_html=True)
 
-    # Paginação no Final
     st.divider()
     st.number_input(f"Página (1-{total_paginas})", min_value=1, max_value=total_paginas, key='pag_input')
 else:
